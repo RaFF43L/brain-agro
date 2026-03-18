@@ -9,13 +9,17 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ProducersService } from './producers.service';
 import { CreateProducerDto } from './dto/create-producer.dto';
+import { CreateProducerFullDto } from './dto/create-producer-full.dto';
 import { UpdateProducerDto } from './dto/update-producer.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import {
   CreateProducerDocs,
+  CreateProducerFullDocs,
   FindAllProducersDocs,
   FindOneProducerDocs,
   UpdateProducerDocs,
@@ -33,10 +37,16 @@ export class ProducersController {
     return this.producersService.create(dto);
   }
 
+  @Post('full')
+  @CreateProducerFullDocs()
+  createFull(@Body() dto: CreateProducerFullDto) {
+    return this.producersService.createFull(dto);
+  }
+
   @Get()
   @FindAllProducersDocs()
-  findAll() {
-    return this.producersService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.producersService.findAll(query);
   }
 
   @Get(':id')
