@@ -38,8 +38,8 @@ export class Farm {
   })
   producer!: Producer;
 
-  @Column()
-  producerId!: number;
+  @Column({ nullable: true })
+  producerId!: number | null;
 
   @OneToMany(() => Crop, (crop) => crop.farm, { cascade: true })
   crops!: Crop[];

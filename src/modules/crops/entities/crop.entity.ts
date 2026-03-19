@@ -22,8 +22,8 @@ export class Crop {
   @ManyToOne(() => Farm, (farm) => farm.crops, { onDelete: 'CASCADE' })
   farm!: Farm;
 
-  @Column()
-  farmId!: number;
+  @Column({ nullable: true })
+  farmId!: number | null;
 
   @CreateDateColumn()
   createdAt!: Date;
