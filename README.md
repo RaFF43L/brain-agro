@@ -1,98 +1,312 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Brain Agro
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST para gerenciamento de produtores rurais, fazendas e culturas agrícolas. Construída com NestJS, TypeORM e PostgreSQL.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Sumário
 
-## Description
+- [Arquitetura](#arquitetura)
+- [Modelo de dados](#modelo-de-dados)
+- [Fluxo de vinculação](#fluxo-de-vinculação)
+- [Início rápido](#início-rápido)
+- [Variáveis de ambiente](#variáveis-de-ambiente)
+- [Rodando sem autenticação](#rodando-sem-autenticação)
+- [Endpoints](#endpoints)
+- [Paginação](#paginação)
+- [Documentação interativa](#documentação-interativa)
+- [Desenvolvimento local](#desenvolvimento-local)
+- [Migrations](#migrations)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## Arquitetura
 
-```bash
-$ npm install
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        NestJS App                           │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │Producers │  │  Farms   │  │  Crops   │  │   Auth   │   │
+│  │ module   │  │  module  │  │  module  │  │  module  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│                                                             │
+│  Global: CognitoAuthGuard · ThrottlerGuard · ErrorFilter    │
+│  Logging: nestjs-pino (pino-http) with async context        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+   ┌──────▼──────┐              ┌───────▼──────┐
+   │  PostgreSQL  │              │  AWS Cognito │
+   │  (TypeORM)  │              │  (JWT auth)  │
+   └─────────────┘              └──────────────┘
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## Modelo de dados
 
-# watch mode
-$ npm run start:dev
+```
+producers
+  id · cpfCnpj · name · created_at · updated_at
+      │ (1:N cascade delete)
+      ▼
+  farms
+    id · name · city · state · totalArea · arableArea · vegetationArea
+    producerId (FK nullable) · created_at · updated_at
+        │ (1:N cascade delete)
+        ▼
+      crops
+        id · season · culture
+        farmId (FK nullable) · created_at · updated_at
 
-# production mode
-$ npm run start:prod
+users
+  id · email · name · cognitoId · created_at · updated_at
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Fluxo de vinculação
 
-# e2e tests
-$ npm run test:e2e
+Crops e farms podem existir sem vínculo. A vinculação acontece em etapas independentes:
 
-# test coverage
-$ npm run test:cov
+```
+1. Criar crop (sem farm)     →  aparece em GET /crops/unassigned
+2. Criar farm (sem producer) →  aparece em GET /farms/unassigned
+3. Vincular farm → crop:     PATCH /crops/:id  { "farmId": 1 }
+4. Vincular producer → farm: PATCH /farms/:id  { "producerId": 1 }
+
+Ou tudo de uma vez:
+POST /producers/full  →  cria producer + farms + crops aninhados
 ```
 
-## Deployment
+O delete é sempre em cascata a partir do pai:
+- Deletar **producer** → deleta suas farms → deleta as crops dessas farms
+- Deletar **farm** → deleta suas crops
+- Deletar **crop** → apenas a crop
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Início rápido
+
+**Pré-requisitos:** Docker e Docker Compose instalados.
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 1. Clone e entre no projeto
+git clone <repo-url>
+cd brain-agro
+
+# 2. Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o .env com suas credenciais (ver seção abaixo)
+
+# 3. Suba tudo
+docker compose up
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+A API estará disponível em `http://localhost:3002`.
+As migrations rodam automaticamente na inicialização em produção (`NODE_ENV=production`).
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Variáveis de ambiente
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| Variável | Descrição | Exemplo |
+|---|---|---|
+| `PORT` | Porta da API | `3002` |
+| `NODE_ENV` | Ambiente (`production` / `development`) | `production` |
+| `DB_HOST` | Host do banco | `db` (docker) / `localhost` |
+| `DB_PORT` | Porta do PostgreSQL | `5432` |
+| `DB_USERNAME` | Usuário do banco | `postgres` |
+| `DB_PASSWORD` | Senha do banco | `postgres` |
+| `DB_NAME` | Nome do banco | `brain_agro` |
+| `AWS_REGION` | Região AWS do Cognito | `us-east-1` |
+| `COGNITO_USER_POOL_ID` | ID do User Pool | `us-east-1_xxxxxxx` |
+| `COGNITO_CLIENT_ID` | Client ID do Cognito | `xxxxxxxxxx` |
+| `COGNITO_CLIENT_SECRET` | Client Secret do Cognito | `xxxxxxxxxx` |
+| `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS | `AKIA...` |
+| `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS | `...` |
+| `SWAGGER_PASSWORD` | Senha básica para o Swagger (opcional) | `admin123` |
 
-## Support
+> O `docker-compose.yml` já injeta `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` e `DB_NAME` automaticamente — não é necessário defini-los no `.env` ao usar Docker Compose.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## Rodando sem autenticação
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Para desenvolvimento local sem AWS Cognito, comente o guard global em `src/app.module.ts`:
 
-## License
+```typescript
+providers: [
+  { provide: APP_FILTER, useClass: ErrorHandlerFilter },
+  // { provide: APP_GUARD, useClass: CognitoAuthGuard },  // ← comentar esta linha
+  { provide: APP_GUARD, useClass: CustomThrottlerGuard },
+],
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Todos os endpoints passam a ser públicos sem nenhuma outra alteração.
+
+---
+
+## Endpoints
+
+### Auth (público)
+
+| Método | Path | Descrição |
+|---|---|---|
+| `POST` | `/auth/register` | Cadastra usuário no Cognito e no banco |
+| `POST` | `/auth/confirm` | Confirma e-mail com código enviado |
+| `POST` | `/auth/login` | Login — retorna `accessToken`, `idToken`, `refreshToken` |
+| `POST` | `/auth/forgot-password` | Inicia fluxo de recuperação de senha |
+| `POST` | `/auth/reset-password` | Define nova senha com código recebido |
+
+### Producers
+
+| Método | Path | Descrição |
+|---|---|---|
+| `POST` | `/producers` | Cria produtor (CPF/CNPJ + nome) |
+| `POST` | `/producers/full` | Cria produtor com farms e crops aninhados |
+| `GET` | `/producers` | Lista produtores (paginação offset) |
+| `GET` | `/producers/:id` | Busca produtor por ID |
+| `PATCH` | `/producers/:id` | Atualiza produtor |
+| `DELETE` | `/producers/:id` | Remove produtor (cascade) |
+
+### Farms
+
+| Método | Path | Descrição |
+|---|---|---|
+| `POST` | `/farms` | Cria fazenda |
+| `GET` | `/producers/:producerId/farms` | Lista fazendas de um produtor (cursor) |
+| `GET` | `/farms/unassigned` | Lista fazendas sem produtor (cursor) |
+| `GET` | `/farms/dashboard` | Dashboard agregado por período |
+| `GET` | `/farms/:id` | Busca fazenda por ID |
+| `PATCH` | `/farms/:id` | Atualiza fazenda (incluindo `producerId` para vincular) |
+| `DELETE` | `/farms/:id` | Remove fazenda (cascade) |
+
+### Crops
+
+| Método | Path | Descrição |
+|---|---|---|
+| `POST` | `/crops` | Cria cultura |
+| `GET` | `/farms/:farmId/crops` | Lista culturas de uma fazenda (cursor) |
+| `GET` | `/crops/unassigned` | Lista culturas sem fazenda (cursor) |
+| `GET` | `/crops/:id` | Busca cultura por ID |
+| `PATCH` | `/crops/:id` | Atualiza cultura (incluindo `farmId` para vincular) |
+| `DELETE` | `/crops/:id` | Remove cultura |
+
+### Health
+
+| Método | Path | Descrição |
+|---|---|---|
+| `GET` | `/health` | Status da aplicação |
+
+---
+
+## Paginação
+
+A API usa dois tipos de paginação:
+
+### Offset (Producers)
+
+```
+GET /producers?page=1&limit=10&sortBy=name&sortOrder=ASC&search=João
+```
+
+Resposta:
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 100,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 10,
+    "hasNext": true
+  }
+}
+```
+
+### Cursor / Keyset (Farms, Crops)
+
+Mais eficiente para grandes volumes. Use o `nextCursor` retornado para buscar a próxima página.
+
+```
+GET /farms/unassigned?limit=10
+# retorna nextCursor: 42
+
+GET /farms/unassigned?limit=10&cursor=42
+# retorna próxima página a partir do id 42
+```
+
+Resposta:
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 500,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 50,
+    "hasNext": true,
+    "nextCursor": 55
+  }
+}
+```
+
+---
+
+## Documentação interativa
+
+Duas interfaces de documentação disponíveis após subir a API:
+
+| Interface | URL | Descrição |
+|---|---|---|
+| Swagger UI | `http://localhost:3002/api/docs` | Interface padrão do Swagger |
+| Scalar | `http://localhost:3002/api/reference` | Interface moderna com melhor UX |
+
+Se `SWAGGER_PASSWORD` estiver configurado, a rota `/docs` exige autenticação básica (`admin` / `<SWAGGER_PASSWORD>`).
+
+Para autenticar nas rotas protegidas, clique em **Authorize** e informe o `Bearer <idToken>` obtido no login.
+
+---
+
+## Desenvolvimento local
+
+```bash
+# Instalar dependências
+npm install
+
+# Subir apenas o banco via Docker
+docker compose up db
+
+# Rodar em modo watch
+npm run start:dev
+
+# Rodar testes
+npm test
+
+# Rodar testes com cobertura
+npm run test:cov
+```
+
+Em modo de desenvolvimento (`NODE_ENV != production`), o TypeORM usa `synchronize: true` — as migrations não rodam automaticamente.
+
+---
+
+## Migrations
+
+```bash
+# Gerar migration com base nas mudanças das entidades
+npm run migration:generate -- src/database/migrations/NomeDaMigration
+
+# Rodar migrations pendentes
+npm run migration:run
+
+# Reverter última migration
+npm run migration:revert
+
+# Ver status das migrations
+npm run migration:show
+```
+
+As migrations ficam em `src/database/migrations/`.
+Em produção (`NODE_ENV=production`), `migrationsRun: true` garante que rodam automaticamente na inicialização do container.
