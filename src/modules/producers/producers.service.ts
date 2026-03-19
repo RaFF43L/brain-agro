@@ -76,7 +76,8 @@ export class ProducersService {
   ): Promise<Producer> {
     const producer = await this.findOne(id);
     Object.assign(producer, dto);
-    return this.producerRepository.save(producer);
+    await this.producerRepository.save(producer);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {

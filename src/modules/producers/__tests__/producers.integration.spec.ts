@@ -116,7 +116,7 @@ describe('Producers (integration)', () => {
         .send({ cpfCnpj: '52998224725', name: 'João Silva' });
       await request(app.getHttpServer())
         .post('/producers')
-        .send({ cpfCnpj: '11444777035', name: 'Maria Santos' });
+        .send({ cpfCnpj: '11144477735', name: 'Maria Santos' });
 
       const res = await request(app.getHttpServer())
         .get('/producers?search=Maria')
@@ -132,7 +132,7 @@ describe('Producers (integration)', () => {
         .send({ cpfCnpj: '52998224725', name: 'Produtor A' });
       await request(app.getHttpServer())
         .post('/producers')
-        .send({ cpfCnpj: '11444777035', name: 'Produtor B' });
+        .send({ cpfCnpj: '11144477735', name: 'Produtor B' });
 
       const res = await request(app.getHttpServer())
         .get('/producers?limit=1&page=1')
