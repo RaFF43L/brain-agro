@@ -301,14 +301,42 @@ docker compose up db
 # Rodar em modo watch
 npm run start:dev
 
-# Rodar testes
+# Testes unitários
 npm test
 
-# Rodar testes com cobertura
+# Testes unitários com cobertura
 npm run test:cov
 ```
 
 Em modo de desenvolvimento (`NODE_ENV != production`), o TypeORM usa `synchronize: true` — as migrations não rodam automaticamente.
+
+---
+
+## Testes de integração (e2e)
+
+Os testes e2e sobem o app completo contra um banco real. Requerem um PostgreSQL rodando e um banco separado.
+
+```bash
+# 1. Suba o banco (se ainda não estiver rodando)
+docker compose up db
+
+# 2. Crie o banco de teste (apenas na primeira vez)
+docker exec -it brain-agro-db-1 psql -U postgres -c "CREATE DATABASE brain_agro_test;"
+
+# 3. Rode os testes e2e
+npm run test:e2e
+```
+
+Configure `TEST_DB_NAME` no `.env` se quiser usar um nome diferente de `brain_agro_test`.
+
+O que é coberto:
+
+| Suite | Cenários |
+|---|---|
+| `app.e2e-spec` | Health check |
+| `producers.e2e-spec` | CRUD completo, `POST /full` com farms+crops, paginação, busca, cascade delete |
+| `farms.e2e-spec` | CRUD completo, validação de área, paginação por cursor, dashboard com filtro de data, cascade delete de crops |
+| `crops.e2e-spec` | CRUD completo, paginação por cursor, busca, cascade delete |
 
 ---
 
