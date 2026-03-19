@@ -26,10 +26,11 @@ import { AuthTokens } from './entities/auth-tokens.entity';
 
 @Injectable()
 export class AuthService {
-  private readonly cognito: CognitoIdentityProviderClient;
+  private readonly cognito: CognitoIdentityProviderClient | null = null;
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly userPoolId: string;
+  private readonly authEnabled: boolean;
 
   constructor(
     @InjectPinoLogger(AuthService.name)
@@ -37,14 +38,18 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
   ) {
-    this.cognito = new CognitoIdentityProviderClient({
-      region: this.config.get<string>('AWS_REGION') ?? '',
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID_COGNITO') ?? '',
-        secretAccessKey:
-          this.config.get<string>('AWS_SECRET_ACCESS_KEY_COGNITO') ?? '',
-      },
-    });
+    this.authEnabled = config.get<string>('AUTH_ENABLED') === 'true';
+    if (this.authEnabled) {
+      this.cognito = new CognitoIdentityProviderClient({
+        region: this.config.get<string>('AWS_REGION') ?? '',
+        credentials: {
+          accessKeyId:
+            this.config.get<string>('AWS_ACCESS_KEY_ID_COGNITO') ?? '',
+          secretAccessKey:
+            this.config.get<string>('AWS_SECRET_ACCESS_KEY_COGNITO') ?? '',
+        },
+      });
+    }
     this.clientId = this.config.get<string>('COGNITO_CLIENT_ID') ?? '';
     this.clientSecret = this.config.get<string>('COGNITO_CLIENT_SECRET') ?? '';
     this.userPoolId = this.config.get<string>('COGNITO_USER_POOL_ID') ?? '';
@@ -55,7 +60,7 @@ export class AuthService {
     let cognitoId: string | undefined;
 
     try {
-      const result = await this.cognito.send(
+      const result = await this.client.send(
         new AdminCreateUserCommand({
           UserPoolId: this.userPoolId,
           Username: dto.email,
@@ -89,7 +94,7 @@ export class AuthService {
           error instanceof Error ? error.stack : String(error),
         );
         await this.cognito
-          .send(
+          ?.send(
             new AdminDeleteUserCommand({
               UserPoolId: this.userPoolId,
               Username: dto.email,
@@ -110,6 +115,16 @@ export class AuthService {
       }
       throw mapCognitoError(error);
     }
+  }
+
+  private get client(): CognitoIdentityProviderClient {
+    if (!this.cognito) {
+      throw new CustomError(
+        'Authentication is not enabled.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    return this.cognito;
   }
 
   private generateSecretHash(username: string): string {
@@ -186,7 +201,7 @@ export class AuthService {
   }
 
   private async getUserStatus(username: string): Promise<string> {
-    const response = await this.cognito.send(
+    const response = await this.client.send(
       new AdminGetUserCommand({
         UserPoolId: this.userPoolId,
         Username: username,
@@ -199,7 +214,7 @@ export class AuthService {
     username: string,
     password: string,
   ): Promise<AuthTokens> {
-    const result = await this.cognito.send(
+    const result = await this.client.send(
       new AdminInitiateAuthCommand({
         AuthFlow: AuthFlowType.ADMIN_USER_PASSWORD_AUTH,
         UserPoolId: this.userPoolId,
@@ -229,7 +244,7 @@ export class AuthService {
     tempPassword: string,
     newPassword: string,
   ): Promise<AuthTokens> {
-    const initResult = await this.cognito.send(
+    const initResult = await this.client.send(
       new AdminInitiateAuthCommand({
         AuthFlow: AuthFlowType.ADMIN_USER_PASSWORD_AUTH,
         UserPoolId: this.userPoolId,
@@ -249,7 +264,7 @@ export class AuthService {
       );
     }
 
-    await this.cognito.send(
+    await this.client.send(
       new AdminSetUserPasswordCommand({
         UserPoolId: this.userPoolId,
         Username: username,
@@ -263,7 +278,7 @@ export class AuthService {
 
   async confirmSignUp(dto: ConfirmSignUpDto) {
     try {
-      await this.cognito.send(
+      await this.client.send(
         new ConfirmSignUpCommand({
           ClientId: this.clientId,
           Username: dto.email,
@@ -279,7 +294,7 @@ export class AuthService {
 
   async forgotPassword(dto: ForgotPasswordDto) {
     try {
-      await this.cognito.send(
+      await this.client.send(
         new ForgotPasswordCommand({
           ClientId: this.clientId,
           Username: dto.email,
@@ -297,7 +312,7 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto) {
     try {
-      await this.cognito.send(
+      await this.client.send(
         new ConfirmForgotPasswordCommand({
           ClientId: this.clientId,
           Username: dto.email,
