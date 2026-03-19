@@ -38,15 +38,16 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {
     this.cognito = new CognitoIdentityProviderClient({
-      region: this.config.getOrThrow<string>('AWS_REGION'),
+      region: this.config.get<string>('AWS_REGION') ?? '',
       credentials: {
-        accessKeyId: this.config.getOrThrow<string>('AWS_ACCESS_KEY_ID_COGNITO'),
-        secretAccessKey: this.config.getOrThrow<string>('AWS_SECRET_ACCESS_KEY_COGNITO'),
+        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID_COGNITO') ?? '',
+        secretAccessKey:
+          this.config.get<string>('AWS_SECRET_ACCESS_KEY_COGNITO') ?? '',
       },
     });
-    this.clientId = this.config.getOrThrow<string>('COGNITO_CLIENT_ID');
-    this.clientSecret = this.config.getOrThrow<string>('COGNITO_CLIENT_SECRET');
-    this.userPoolId = this.config.getOrThrow<string>('COGNITO_USER_POOL_ID');
+    this.clientId = this.config.get<string>('COGNITO_CLIENT_ID') ?? '';
+    this.clientSecret = this.config.get<string>('COGNITO_CLIENT_SECRET') ?? '';
+    this.userPoolId = this.config.get<string>('COGNITO_USER_POOL_ID') ?? '';
   }
 
   async register(dto: RegisterDto) {
@@ -67,12 +68,19 @@ export class AuthService {
         }),
       );
 
-      cognitoId = result.User!.Attributes!.find((a) => a.Name === 'sub')!.Value!;
+      cognitoId = result.User!.Attributes!.find(
+        (a) => a.Name === 'sub',
+      )!.Value!;
 
-      await this.usersService.create({ email: dto.email, name: dto.name, cognitoId });
+      await this.usersService.create({
+        email: dto.email,
+        name: dto.name,
+        cognitoId,
+      });
 
       return {
-        message: 'Registration successful. A temporary password was sent to the provided email.',
+        message:
+          'Registration successful. A temporary password was sent to the provided email.',
       };
     } catch (error) {
       if (cognitoId) {
@@ -81,11 +89,18 @@ export class AuthService {
           error instanceof Error ? error.stack : String(error),
         );
         await this.cognito
-          .send(new AdminDeleteUserCommand({ UserPoolId: this.userPoolId, Username: dto.email }))
+          .send(
+            new AdminDeleteUserCommand({
+              UserPoolId: this.userPoolId,
+              Username: dto.email,
+            }),
+          )
           .catch((deleteError: unknown) =>
             this.logger.error(
               `Failed to roll back Cognito user. email=${dto.email}`,
-              deleteError instanceof Error ? deleteError.stack : String(deleteError),
+              deleteError instanceof Error
+                ? deleteError.stack
+                : String(deleteError),
             ),
           );
         throw new CustomError(
@@ -110,7 +125,8 @@ export class AuthService {
     const symbols = '!@#$%&*';
     const all = upper + lower + digits + symbols;
 
-    const rand = (charset: string) => charset[randomBytes(1)[0] % charset.length];
+    const rand = (charset: string) =>
+      charset[randomBytes(1)[0] % charset.length];
 
     const required = [rand(upper), rand(lower), rand(digits), rand(symbols)];
     const rest = Array.from({ length: 8 }, () => rand(all));
@@ -137,7 +153,10 @@ export class AuthService {
         },
         FORCE_CHANGE_PASSWORD: async () => {
           if (!newPassword) {
-            throw new CustomError('New password is required.', HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomError(
+              'New password is required.',
+              HttpStatus.UNPROCESSABLE_ENTITY,
+            );
           }
           return this.setNewPassword(email, password, newPassword);
         },
@@ -145,7 +164,9 @@ export class AuthService {
 
       const action = actions[userStatus];
       if (!action) {
-        this.logger.warn(`[login] unexpected userStatus=${userStatus} email=${email}`);
+        this.logger.warn(
+          `[login] unexpected userStatus=${userStatus} email=${email}`,
+        );
         throw new CustomError(
           `Unexpected user status: ${userStatus}.`,
           HttpStatus.INTERNAL_SERVER_ERROR,
@@ -174,7 +195,10 @@ export class AuthService {
     return response.UserStatus ?? 'UNKNOWN';
   }
 
-  private async authenticateUser(username: string, password: string): Promise<AuthTokens> {
+  private async authenticateUser(
+    username: string,
+    password: string,
+  ): Promise<AuthTokens> {
     const result = await this.cognito.send(
       new AdminInitiateAuthCommand({
         AuthFlow: AuthFlowType.ADMIN_USER_PASSWORD_AUTH,
@@ -219,7 +243,10 @@ export class AuthService {
     );
 
     if (initResult.ChallengeName !== 'NEW_PASSWORD_REQUIRED') {
-      throw new CustomError('Unexpected authentication challenge.', HttpStatus.BAD_REQUEST);
+      throw new CustomError(
+        'Unexpected authentication challenge.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.cognito.send(
@@ -260,7 +287,8 @@ export class AuthService {
       );
 
       return {
-        message: 'If this email is registered, you will receive a code to reset your password.',
+        message:
+          'If this email is registered, you will receive a code to reset your password.',
       };
     } catch (error) {
       throw mapCognitoError(error);
