@@ -1,51 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { getLoggerToken } from 'nestjs-pino';
 import { ProducersService } from '../producers.service';
+import { ProducerRepository } from '../repositories/producer.repository';
 import { Producer } from '../entities/producer.entity';
 
 const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 
-type MockRepository<T = any> = Partial<
-  Record<keyof Repository<any>, jest.Mock>
->;
-
-const createMockRepository = <T = any>(): MockRepository<T> => ({
-  save: jest.fn(),
-  find: jest.fn(),
+const createMockProducerRepository = () => ({
+  findAll: jest.fn(),
   findOne: jest.fn(),
+  save: jest.fn(),
   remove: jest.fn(),
-  createQueryBuilder: jest.fn(),
-});
-
-const createMockQueryBuilder = () => ({
-  leftJoinAndSelect: jest.fn().mockReturnThis(),
-  orderBy: jest.fn().mockReturnThis(),
-  andWhere: jest.fn().mockReturnThis(),
-  take: jest.fn().mockReturnThis(),
-  skip: jest.fn().mockReturnThis(),
-  getManyAndCount: jest.fn(),
 });
 
 describe('ProducersService', () => {
   let service: ProducersService;
-  let producerRepository: MockRepository<Producer>;
+  let producerRepository: ReturnType<typeof createMockProducerRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProducersService,
         { provide: getLoggerToken(ProducersService.name), useValue: mockLogger },
-        {
-          provide: getRepositoryToken(Producer),
-          useValue: createMockRepository(),
-        },
+        { provide: ProducerRepository, useValue: createMockProducerRepository() },
       ],
     }).compile();
 
     service = module.get<ProducersService>(ProducersService);
-    producerRepository = module.get(getRepositoryToken(Producer));
+    producerRepository = module.get(ProducerRepository);
   });
 
   it('should be defined', () => {
@@ -57,7 +39,7 @@ describe('ProducersService', () => {
       const dto = { cpfCnpj: '12345678901', name: 'João Silva' };
       const saved = { id: 1, ...dto };
 
-      producerRepository.save!.mockResolvedValue(saved);
+      producerRepository.save.mockResolvedValue(saved);
 
       const result = await service.create(dto);
 
@@ -93,10 +75,10 @@ describe('ProducersService', () => {
         id: 1,
         cpfCnpj: dto.cpfCnpj,
         name: dto.name,
-        farms: [{ id: 1, name: 'Fazenda Boa Vista', crops: [{ id: 1, season: 'Safra 2021', culture: 'Soja' }, { id: 2, season: 'Safra 2021', culture: 'Milho' }] }],
+        farms: [{ id: 1, name: 'Fazenda Boa Vista', crops: [{ id: 1 }, { id: 2 }] }],
       };
 
-      producerRepository.save!.mockResolvedValue(fullProducer);
+      producerRepository.save.mockResolvedValue(fullProducer);
 
       const result = await service.createFull(dto);
 
@@ -116,7 +98,7 @@ describe('ProducersService', () => {
       const dto = { cpfCnpj: '52998224725', name: 'Maria Santos' };
       const savedProducer = { id: 2, ...dto, farms: [] };
 
-      producerRepository.save!.mockResolvedValue(savedProducer);
+      producerRepository.save.mockResolvedValue(savedProducer);
 
       const result = await service.createFull(dto);
 
@@ -128,70 +110,30 @@ describe('ProducersService', () => {
   });
 
   describe('findAll', () => {
-    it('should return paginated producers with offset', async () => {
-      const producers = [{ id: 1, name: 'João Silva' }] as unknown as Producer[];
-      const mockQb = createMockQueryBuilder();
-      mockQb.getManyAndCount.mockResolvedValue([producers, 1]);
-      producerRepository.createQueryBuilder!.mockReturnValue(mockQb);
+    it('should delegate to producerRepository.findAll', async () => {
+      const expected = { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0, hasNext: false } };
+      producerRepository.findAll.mockResolvedValue(expected);
 
       const result = await service.findAll({ page: 1, limit: 10 });
 
-      expect(mockQb.skip).toHaveBeenCalledWith(0);
-      expect(mockQb.take).toHaveBeenCalledWith(10);
-      expect(mockQb.orderBy).toHaveBeenCalledWith('producer.id', 'ASC');
-      expect(result.data).toEqual(producers);
-      expect(result.meta.total).toBe(1);
-      expect(result.meta.hasNext).toBe(false);
-      expect(result.meta).not.toHaveProperty('nextCursor');
-    });
-
-    it('should sort by allowed field', async () => {
-      const mockQb = createMockQueryBuilder();
-      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
-      producerRepository.createQueryBuilder!.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, sortBy: 'name', sortOrder: 'DESC' });
-
-      expect(mockQb.orderBy).toHaveBeenCalledWith('producer.name', 'DESC');
-    });
-
-    it('should fallback to id when sortBy is invalid', async () => {
-      const mockQb = createMockQueryBuilder();
-      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
-      producerRepository.createQueryBuilder!.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, sortBy: 'invalid' });
-
-      expect(mockQb.orderBy).toHaveBeenCalledWith('producer.id', 'ASC');
-    });
-
-    it('should filter by search', async () => {
-      const mockQb = createMockQueryBuilder();
-      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
-      producerRepository.createQueryBuilder!.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, search: 'João' });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        '(producer.name ILIKE :search OR producer.cpfCnpj ILIKE :search)',
-        { search: '%João%' },
-      );
+      expect(producerRepository.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(result).toEqual(expected);
     });
   });
 
   describe('findOne', () => {
     it('should return a producer by id', async () => {
       const expected = { id: 1, cpfCnpj: '12345678901', name: 'João Silva' } as unknown as Producer;
-      producerRepository.findOne!.mockResolvedValue(expected);
+      producerRepository.findOne.mockResolvedValue(expected);
 
       const result = await service.findOne(1);
 
-      expect(producerRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(producerRepository.findOne).toHaveBeenCalledWith(1);
       expect(result).toEqual(expected);
     });
 
     it('should throw if producer does not exist', async () => {
-      producerRepository.findOne!.mockResolvedValue(null);
+      producerRepository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow('Producer with id 999 not found');
     });
@@ -202,8 +144,8 @@ describe('ProducersService', () => {
       const existing = { id: 1, cpfCnpj: '12345678901', name: 'João Silva' } as unknown as Producer;
       const updated = { ...existing, name: 'João Souza' } as unknown as Producer;
 
-      producerRepository.findOne!.mockResolvedValue(existing);
-      producerRepository.save!.mockResolvedValue(updated);
+      producerRepository.findOne.mockResolvedValue(existing);
+      producerRepository.save.mockResolvedValue(updated);
 
       const result = await service.update(1, { name: 'João Souza' });
 
@@ -211,7 +153,7 @@ describe('ProducersService', () => {
     });
 
     it('should throw if producer does not exist', async () => {
-      producerRepository.findOne!.mockResolvedValue(null);
+      producerRepository.findOne.mockResolvedValue(null);
 
       await expect(service.update(999, { name: 'Ninguém' })).rejects.toThrow('Producer with id 999 not found');
     });
@@ -220,8 +162,8 @@ describe('ProducersService', () => {
   describe('remove', () => {
     it('should remove a producer', async () => {
       const existing = { id: 1 } as unknown as Producer;
-      producerRepository.findOne!.mockResolvedValue(existing);
-      producerRepository.remove!.mockResolvedValue(existing);
+      producerRepository.findOne.mockResolvedValue(existing);
+      producerRepository.remove.mockResolvedValue(undefined);
 
       await service.remove(1);
 
@@ -229,7 +171,7 @@ describe('ProducersService', () => {
     });
 
     it('should throw if producer does not exist', async () => {
-      producerRepository.findOne!.mockResolvedValue(null);
+      producerRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove(999)).rejects.toThrow('Producer with id 999 not found');
     });
