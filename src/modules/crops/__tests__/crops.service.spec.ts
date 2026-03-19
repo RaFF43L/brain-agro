@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { getLoggerToken } from 'nestjs-pino';
 import { CropsService } from '../crops.service';
 import { Crop } from '../entities/crop.entity';
+
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 import { FarmsService } from '../../farms/farms.service';
 import { Farm } from '../../farms/entities/farm.entity';
 
@@ -37,6 +40,7 @@ describe('CropsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CropsService,
+        { provide: getLoggerToken(CropsService.name), useValue: mockLogger },
         {
           provide: getRepositoryToken(Crop),
           useValue: createMockRepository(),

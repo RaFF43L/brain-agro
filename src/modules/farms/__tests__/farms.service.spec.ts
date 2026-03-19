@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { getLoggerToken } from 'nestjs-pino';
 import { FarmsService } from '../farms.service';
 import { Farm } from '../entities/farm.entity';
+
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 import { ProducersService } from '../../producers/producers.service';
 import { Producer } from '../../producers/entities/producer.entity';
 
@@ -38,6 +41,7 @@ describe('FarmsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FarmsService,
+        { provide: getLoggerToken(FarmsService.name), useValue: mockLogger },
         {
           provide: getRepositoryToken(Farm),
           useValue: createMockRepository(),
@@ -214,7 +218,7 @@ describe('FarmsService', () => {
 
       const result = await service.findUnassigned({ page: 1, limit: 10 });
 
-      expect(mockQb.where).toHaveBeenCalledWith('farm.producerId = :producerId', { producerId: 1 });
+      expect(mockQb.where).toHaveBeenCalledWith('farm.producerId IS NULL');
       expect(mockQb.skip).toHaveBeenCalledWith(0);
       expect(result.data).toEqual(farms);
       expect(result.meta.total).toBe(1);

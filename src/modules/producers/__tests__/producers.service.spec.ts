@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { getLoggerToken } from 'nestjs-pino';
 import { ProducersService } from '../producers.service';
 import { Producer } from '../entities/producer.entity';
+
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 
 type MockRepository<T = any> = Partial<
   Record<keyof Repository<any>, jest.Mock>
@@ -33,6 +36,7 @@ describe('ProducersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProducersService,
+        { provide: getLoggerToken(ProducersService.name), useValue: mockLogger },
         {
           provide: getRepositoryToken(Producer),
           useValue: createMockRepository(),

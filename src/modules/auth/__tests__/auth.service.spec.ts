@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getLoggerToken } from 'nestjs-pino';
 import { AuthService } from '../auth.service';
 import { CustomError } from '../../../common/errors/custom-error';
-import { User } from '../../users/entities/user.entity';
+import { UsersService } from '../../users/users.service';
 
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 const mockSend = jest.fn();
 
 jest.mock('@aws-sdk/client-cognito-identity-provider', () => ({
@@ -22,26 +23,26 @@ jest.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 
 describe('AuthService', () => {
   let service: AuthService;
-  let mockUserRepository: { create: jest.Mock; save: jest.Mock };
+  let mockUsersService: { create: jest.Mock; findByEmail: jest.Mock };
 
   beforeEach(async () => {
     mockSend.mockReset();
-    mockUserRepository = {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockResolvedValue({}),
+    mockUsersService = {
+      create: jest.fn().mockResolvedValue({}),
+      findByEmail: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
         {
           provide: ConfigService,
           useValue: { getOrThrow: jest.fn().mockReturnValue('mock-value') },
         },
         {
-          provide: getRepositoryToken(User),
-          useValue: mockUserRepository,
+          provide: UsersService,
+          useValue: mockUsersService,
         },
       ],
     }).compile();
@@ -62,7 +63,7 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('Registration successful');
       expect(mockSend).toHaveBeenCalledTimes(1);
-      expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockUsersService.create).toHaveBeenCalledTimes(1);
     });
 
     it('should not save to db if cognito fails', async () => {
@@ -73,7 +74,7 @@ describe('AuthService', () => {
         service.register({ email: 'test@test.com', name: 'Test User' }),
       ).rejects.toBeInstanceOf(CustomError);
 
-      expect(mockUserRepository.save).not.toHaveBeenCalled();
+      expect(mockUsersService.create).not.toHaveBeenCalled();
     });
 
     it('should delete cognito user if db save fails', async () => {
@@ -82,7 +83,7 @@ describe('AuthService', () => {
           User: { Attributes: [{ Name: 'sub', Value: 'cognito-sub-123' }] },
         })
         .mockResolvedValueOnce({});
-      mockUserRepository.save.mockRejectedValue(new Error('DB error'));
+      mockUsersService.create.mockRejectedValue(new Error('DB error'));
 
       await expect(
         service.register({ email: 'test@test.com', name: 'Test User' }),
