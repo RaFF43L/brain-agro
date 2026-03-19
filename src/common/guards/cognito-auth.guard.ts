@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
@@ -18,10 +23,12 @@ export class CognitoAuthGuard implements CanActivate {
     this.authEnabled = config.get<string>('AUTH_ENABLED') === 'true';
 
     if (this.authEnabled) {
-      const region = config.getOrThrow<string>('AWS_REGION');
-      const userPoolId = config.getOrThrow<string>('COGNITO_USER_POOL_ID');
+      const region = config.get<string>('AWS_REGION') ?? '';
+      const userPoolId = config.get<string>('COGNITO_USER_POOL_ID') ?? '';
       this.issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-      this.jwks = createRemoteJWKSet(new URL(`${this.issuer}/.well-known/jwks.json`));
+      this.jwks = createRemoteJWKSet(
+        new URL(`${this.issuer}/.well-known/jwks.json`),
+      );
     }
   }
 
