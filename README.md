@@ -97,49 +97,43 @@ cd brain-agro
 
 # 2. Configure as variáveis de ambiente
 cp .env.example .env
-# Edite o .env com suas credenciais (ver seção abaixo)
+```
 
+Para rodar sem autenticação (recomendado para avaliação), o `.env` não precisa de nenhuma alteração — as variáveis de banco já são injetadas pelo `docker-compose.yml` e `AUTH_ENABLED` vazio desativa o Cognito automaticamente.
+
+```bash
 # 3. Suba tudo
 docker compose up
 ```
 
+O container da API aguarda o banco estar saudável antes de iniciar. Quando os logs exibirem `Application is running on port 3002`, a API está pronta.
+
 A API estará disponível em `http://localhost:3002`.
-As migrations rodam automaticamente na inicialização em produção (`NODE_ENV=production`).
+As migrations rodam automaticamente na inicialização (`NODE_ENV=production` já configurado pelo docker-compose).
 
 ---
 
 ## Variáveis de ambiente
 
-| Variável | Descrição | Exemplo |
-|---|---|---|
-| `PORT` | Porta da API | `3002` |
-| `NODE_ENV` | Ambiente (`production` / `development`) | `production` |
-| `DB_HOST` | Host do banco | `db` (docker) / `localhost` |
-| `DB_PORT` | Porta do PostgreSQL | `5432` |
-| `DB_USERNAME` | Usuário do banco | `postgres` |
-| `DB_PASSWORD` | Senha do banco | `postgres` |
-| `DB_NAME` | Nome do banco | `brain_agro` |
-| `AWS_REGION` | Região AWS do Cognito | `us-east-1` |
-| `COGNITO_USER_POOL_ID` | ID do User Pool | `us-east-1_xxxxxxx` |
-| `COGNITO_CLIENT_ID` | Client ID do Cognito | `xxxxxxxxxx` |
-| `COGNITO_CLIENT_SECRET` | Client Secret do Cognito | `xxxxxxxxxx` |
-| `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS | `...` |
-| `AUTH_ENABLED` | Habilita autenticação via Cognito. Qualquer valor diferente de `"true"` desativa. | `true` |
-| `SWAGGER_PASSWORD` | Senha básica para o Swagger (opcional) | `admin123` |
+| Variável | Descrição | Obrigatório | Exemplo |
+|---|---|---|---|
+| `PORT` | Porta da API | Não (padrão: `3002`) | `3002` |
+| `AUTH_ENABLED` | Habilita autenticação JWT via Cognito. Qualquer valor diferente de `"true"` desativa. | Não | `true` |
+| `SWAGGER_PASSWORD` | Senha básica para proteger o Swagger UI | Não | `admin123` |
+| `DB_HOST` | Host do PostgreSQL | Sim (local) | `localhost` |
+| `DB_PORT` | Porta do PostgreSQL | Sim (local) | `5432` |
+| `DB_USERNAME` | Usuário do banco | Sim (local) | `postgres` |
+| `DB_PASSWORD` | Senha do banco | Sim (local) | `postgres` |
+| `DB_NAME` | Nome do banco | Sim (local) | `brain_agro` |
+| `TEST_DB_NAME` | Banco usado nos testes de integração | Não (padrão: `brain_agro_test`) | `brain_agro_test` |
+| `AWS_REGION` | Região AWS do Cognito | Apenas se `AUTH_ENABLED=true` | `us-east-1` |
+| `COGNITO_USER_POOL_ID` | ID do User Pool | Apenas se `AUTH_ENABLED=true` | `us-east-1_xxxxxxx` |
+| `COGNITO_CLIENT_ID` | Client ID do Cognito | Apenas se `AUTH_ENABLED=true` | `xxxxxxxxxx` |
+| `COGNITO_CLIENT_SECRET` | Client Secret do Cognito | Apenas se `AUTH_ENABLED=true` | `xxxxxxxxxx` |
+| `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS | Apenas se `AUTH_ENABLED=true` | `AKIA...` |
+| `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS | Apenas se `AUTH_ENABLED=true` | `...` |
 
-As variáveis abaixo são **obrigatórias apenas quando `AUTH_ENABLED=true`**:
-
-| Variável | Descrição |
-|---|---|
-| `AWS_REGION` | Região AWS do Cognito |
-| `COGNITO_USER_POOL_ID` | ID do User Pool |
-| `COGNITO_CLIENT_ID` | Client ID do Cognito |
-| `COGNITO_CLIENT_SECRET` | Client Secret do Cognito |
-| `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS |
-| `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS |
-
-> O `docker-compose.yml` já injeta `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` e `DB_NAME` automaticamente — não é necessário defini-los no `.env` ao usar Docker Compose.
+> **Ao usar `docker compose up`**, as variáveis `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` e `NODE_ENV` são injetadas automaticamente pelo `docker-compose.yml` — não é necessário defini-las no `.env`.
 
 ---
 
@@ -148,14 +142,14 @@ As variáveis abaixo são **obrigatórias apenas quando `AUTH_ENABLED=true`**:
 Por padrão (quando `AUTH_ENABLED` não está definido ou não é `"true"`), a API sobe sem validação de JWT e todos os endpoints ficam públicos — nenhuma alteração de código necessária.
 
 ```env
-# .env — desenvolvimento local sem Cognito
+# .env — desenvolvimento local sem Cognito (padrão do .env.example)
 AUTH_ENABLED=          # vazio = auth desativado
 ```
 
-Para produção, basta ativar e preencher as variáveis do Cognito:
+Para produção com autenticação, basta ativar e preencher as variáveis do Cognito:
 
 ```env
-# .env — produção
+# .env — produção com Cognito
 AUTH_ENABLED=true
 AWS_REGION=us-east-1
 COGNITO_USER_POOL_ID=us-east-1_xxxxxxx
@@ -217,7 +211,7 @@ AWS_SECRET_ACCESS_KEY_COGNITO=...
 
 | Método | Path | Descrição |
 |---|---|---|
-| `GET` | `/health` | Status da aplicação |
+| `GET` | `/health` | Retorna status da aplicação |
 
 ---
 
@@ -291,12 +285,14 @@ Para autenticar nas rotas protegidas, clique em **Authorize** e informe o `Beare
 
 ## Desenvolvimento local
 
+**Pré-requisitos:** Node.js 20+ e Docker.
+
 ```bash
 # Instalar dependências
 npm install
 
 # Subir apenas o banco via Docker
-docker compose up db
+docker compose up db -d
 
 # Rodar em modo watch
 npm run start:dev
@@ -308,22 +304,22 @@ npm test
 npm run test:cov
 ```
 
-Em modo de desenvolvimento (`NODE_ENV != production`), o TypeORM usa `synchronize: true` — as migrations não rodam automaticamente.
+Em modo de desenvolvimento (`NODE_ENV != production`), o TypeORM usa `synchronize: true` — as migrations não rodam automaticamente, o schema é sincronizado direto com as entidades.
 
 ---
 
 ## Testes de integração (e2e)
 
-Os testes e2e sobem o app completo contra um banco real. Requerem um PostgreSQL rodando e um banco separado.
+Os testes de integração sobem o app completo contra um banco real. Requerem PostgreSQL rodando e um banco separado do principal.
 
 ```bash
 # 1. Suba o banco (se ainda não estiver rodando)
 docker compose up db
 
 # 2. Crie o banco de teste (apenas na primeira vez)
-docker exec -it brain-agro-db-1 psql -U postgres -c "CREATE DATABASE brain_agro_test;"
+docker compose exec db psql -U postgres -c "CREATE DATABASE brain_agro_test;"
 
-# 3. Rode os testes e2e
+# 3. Rode os testes de integração
 npm run test:e2e
 ```
 
