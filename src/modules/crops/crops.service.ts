@@ -24,8 +24,7 @@ export class CropsService {
     private readonly farmsService: FarmsService,
   ) {}
 
-  async create(dto: { season: string; culture: string; farmId: number }): Promise<Crop> {
-    await this.farmsService.findOne(dto.farmId);
+  async create(dto: { season: string; culture: string }): Promise<Crop> {
     const crop = Object.assign(new Crop(), dto);
     return this.cropRepository.save(crop);
   }
@@ -34,7 +33,14 @@ export class CropsService {
     farmId: number,
     query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<Crop>> {
-    const { page = 1, limit = 10, cursor, search, sortBy, sortOrder = 'ASC' } = query;
+    const {
+      page = 1,
+      limit = 10,
+      cursor,
+      search,
+      sortBy,
+      sortOrder = 'ASC',
+    } = query;
 
     const field = this.sortableFields.includes(sortBy ?? '') ? sortBy! : 'id';
 
@@ -44,10 +50,9 @@ export class CropsService {
       .orderBy(`crop.${field}`, sortOrder);
 
     if (search) {
-      qb.andWhere(
-        '(crop.season ILIKE :search OR crop.culture ILIKE :search)',
-        { search: `%${search}%` },
-      );
+      qb.andWhere('(crop.season ILIKE :search OR crop.culture ILIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
     if (cursor) {
@@ -77,10 +82,17 @@ export class CropsService {
     };
   }
 
-    async findUnassigned(
+  async findUnassigned(
     query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<Crop>> {
-    const { page = 1, limit = 10, cursor, search, sortBy, sortOrder = 'ASC' } = query;
+    const {
+      page = 1,
+      limit = 10,
+      cursor,
+      search,
+      sortBy,
+      sortOrder = 'ASC',
+    } = query;
 
     const field = this.sortableFields.includes(sortBy ?? '') ? sortBy! : 'id';
 
@@ -90,10 +102,9 @@ export class CropsService {
       .orderBy(`crop.${field}`, sortOrder);
 
     if (search) {
-      qb.andWhere(
-        '(crop.season ILIKE :search OR crop.culture ILIKE :search)',
-        { search: `%${search}%` },
-      );
+      qb.andWhere('(crop.season ILIKE :search OR crop.culture ILIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
     if (cursor) {
