@@ -6,12 +6,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Public } from '../../../common/decorators/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 export const AuthTag = () => applyDecorators(ApiTags('Auth'));
 
 export const RegisterRoute = () =>
   applyDecorators(
     Post('register'),
+    Throttle({ default: { ttl: 60, limit: 5 } }),
     HttpCode(HttpStatus.CREATED),
     ApiOperation({ summary: 'Register a new user' }),
     ApiResponse({ status: 201, description: 'User registered successfully.' }),

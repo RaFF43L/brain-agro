@@ -19,7 +19,7 @@ import { UsersModule } from './modules/users/users.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot(pinoHttpConfig),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
     DatabaseModule,
     ProducersModule,
     FarmsModule,
