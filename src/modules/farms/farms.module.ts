@@ -3,12 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Farm } from './entities/farm.entity';
 import { FarmsService } from './farms.service';
 import { FarmsController } from './farms.controller';
-import { ProducersModule } from '../producers/producers.module';
+import { FarmRepository } from './repositories/farm.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Farm]), ProducersModule],
+  imports: [TypeOrmModule.forFeature([Farm])],
   controllers: [FarmsController],
-  providers: [FarmsService],
+  providers: [FarmsService, FarmRepository],
   exports: [FarmsService],
 })
 export class FarmsModule {}
