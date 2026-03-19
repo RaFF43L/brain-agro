@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsNumber, IsPositive, IsString, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateFarmDto {
   @ApiProperty({ example: 'Fazenda Boa Vista', description: 'Nome da fazenda' })
@@ -32,10 +40,4 @@ export class CreateFarmDto {
   @IsNumber()
   @Min(0)
   vegetationArea!: number;
-
-  @ApiProperty({ example: 1, description: 'ID do produtor' })
-  @IsInt()
-  @IsPositive()
-  @Type(() => Number)
-  producerId!: number;
 }

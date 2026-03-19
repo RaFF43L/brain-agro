@@ -40,10 +40,7 @@ export class FarmsService {
     totalArea: number;
     arableArea: number;
     vegetationArea: number;
-    producerId: number;
   }): Promise<Farm> {
-    await this.producersService.findOne(dto.producerId);
-
     if (dto.arableArea + dto.vegetationArea > dto.totalArea) {
       throw new CustomError(
         'A soma das áreas agricultável e de vegetação não pode ultrapassar a área total da fazenda',
