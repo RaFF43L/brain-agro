@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsPositive,
-  IsString,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class CreateCropDto {
   @ApiProperty({
@@ -21,4 +14,10 @@ export class CreateCropDto {
   @IsString()
   @IsNotEmpty()
   culture!: string;
+
+  @ApiProperty({ example: 1, description: 'ID da fazenda (opcional)', required: false })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  farmId?: number;
 }

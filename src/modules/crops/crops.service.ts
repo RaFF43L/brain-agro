@@ -18,9 +18,16 @@ export class CropsService {
     private readonly cropRepository: CropRepository,
   ) {}
 
-  async create(dto: { season: string; culture: string }): Promise<Crop> {
-    const crop = Object.assign(new Crop(), dto);
-    return this.cropRepository.save(crop);
+  async create(dto: { season: string; culture: string; farmId?: number }): Promise<Crop> {
+    try {
+      const crop = Object.assign(new Crop(), dto);
+      return await this.cropRepository.save(crop);
+    } catch (error: any) {
+      if (error?.code === '23503') {
+        throw new CustomError('Farm not found', HttpStatus.NOT_FOUND);
+      }
+      throw error;
+    }
   }
 
   async findByFarm(

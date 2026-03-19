@@ -152,7 +152,7 @@ describe('Crops (integration)', () => {
     it('cascade deletes crop (not orphans) when its farm is deleted', async () => {
       const producer = await request(app.getHttpServer())
         .post('/producers')
-        .send({ cpfCnpj: '11444777035', name: 'P2' });
+        .send({ cpfCnpj: '11144477735', name: 'P2' });
 
       const farm2 = await request(app.getHttpServer())
         .post('/farms')
