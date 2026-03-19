@@ -38,7 +38,7 @@ describe('AuthService', () => {
         { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
         {
           provide: ConfigService,
-          useValue: { getOrThrow: jest.fn().mockReturnValue('mock-value') },
+          useValue: { get: jest.fn().mockReturnValue('mock-value'), getOrThrow: jest.fn().mockReturnValue('mock-value') },
         },
         {
           provide: UsersService,
