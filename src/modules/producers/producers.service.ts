@@ -89,7 +89,7 @@ export class ProducersService {
 
   async findOne(id: number): Promise<Producer> {
     const producer = await this.producerRepository.findOne({
-      where: { id },
+      where: { id }
     });
 
     if (!producer) {

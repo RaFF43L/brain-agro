@@ -23,6 +23,7 @@ import {
   UpdateCropDocs,
   DeleteCropDocs,
 } from './decorators';
+import { FindUnassignedCropDocs } from './decorators/find-unassigned-crop.decorator';
 
 @ApiTags('Crops')
 @Controller()
@@ -42,6 +43,12 @@ export class CropsController {
     @Query() query: CursorPaginationQueryDto,
   ) {
     return this.cropsService.findByFarm(farmId, query);
+  }
+
+  @Get('crops/unassigned')
+  @FindUnassignedCropDocs()
+  finddUnassigned(@Query() query: CursorPaginationQueryDto) {
+    return this.cropsService.findUnassigned(query);
   }
 
   @Get('crops/:id')

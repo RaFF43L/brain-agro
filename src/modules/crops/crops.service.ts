@@ -74,6 +74,52 @@ export class CropsService {
     };
   }
 
+    async findUnassigned(
+    query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<Crop>> {
+    const { page = 1, limit = 10, cursor, search, sortBy, sortOrder = 'ASC' } = query;
+
+    const field = this.sortableFields.includes(sortBy ?? '') ? sortBy! : 'id';
+
+    const qb = this.cropRepository
+      .createQueryBuilder('crop')
+      .where('crop.farmId IS NULL')
+      .orderBy(`crop.${field}`, sortOrder);
+
+    if (search) {
+      qb.andWhere(
+        '(crop.season ILIKE :search OR crop.culture ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (cursor) {
+      qb.andWhere('crop.id > :cursor', { cursor });
+    }
+
+    qb.take(limit);
+
+    if (!cursor) {
+      qb.skip((page - 1) * limit);
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+    const lastItem = data[data.length - 1];
+
+    return {
+      data,
+      meta: {
+        total,
+        page: cursor ? 0 : page,
+        limit,
+        totalPages,
+        hasNext: cursor ? data.length === limit : page < totalPages,
+        nextCursor: lastItem?.id ?? null,
+      },
+    };
+  }
+
   async update(
     id: number,
     dto: Partial<{ season: string; culture: string }>,
