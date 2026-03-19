@@ -7,20 +7,27 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class CognitoAuthGuard implements CanActivate {
-  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
-  private readonly issuer: string;
+  private readonly jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+  private readonly issuer: string = '';
+  private readonly authEnabled: boolean;
 
   constructor(
     private readonly reflector: Reflector,
     config: ConfigService,
   ) {
-    const region = config.getOrThrow<string>('AWS_REGION');
-    const userPoolId = config.getOrThrow<string>('COGNITO_USER_POOL_ID');
-    this.issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
-    this.jwks = createRemoteJWKSet(new URL(`${this.issuer}/.well-known/jwks.json`));
+    this.authEnabled = config.get<string>('AUTH_ENABLED') === 'true';
+
+    if (this.authEnabled) {
+      const region = config.getOrThrow<string>('AWS_REGION');
+      const userPoolId = config.getOrThrow<string>('COGNITO_USER_POOL_ID');
+      this.issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+      this.jwks = createRemoteJWKSet(new URL(`${this.issuer}/.well-known/jwks.json`));
+    }
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (!this.authEnabled) return true;
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -32,7 +39,7 @@ export class CognitoAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     try {
-      await jwtVerify(token, this.jwks, { issuer: this.issuer });
+      await jwtVerify(token, this.jwks!, { issuer: this.issuer });
     } catch {
       throw new UnauthorizedException();
     }

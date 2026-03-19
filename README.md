@@ -125,7 +125,19 @@ As migrations rodam automaticamente na inicialização em produção (`NODE_ENV=
 | `COGNITO_CLIENT_SECRET` | Client Secret do Cognito | `xxxxxxxxxx` |
 | `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS | `AKIA...` |
 | `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS | `...` |
+| `AUTH_ENABLED` | Habilita autenticação via Cognito. Qualquer valor diferente de `"true"` desativa. | `true` |
 | `SWAGGER_PASSWORD` | Senha básica para o Swagger (opcional) | `admin123` |
+
+As variáveis abaixo são **obrigatórias apenas quando `AUTH_ENABLED=true`**:
+
+| Variável | Descrição |
+|---|---|
+| `AWS_REGION` | Região AWS do Cognito |
+| `COGNITO_USER_POOL_ID` | ID do User Pool |
+| `COGNITO_CLIENT_ID` | Client ID do Cognito |
+| `COGNITO_CLIENT_SECRET` | Client Secret do Cognito |
+| `AWS_ACCESS_KEY_ID_COGNITO` | Access Key AWS |
+| `AWS_SECRET_ACCESS_KEY_COGNITO` | Secret Key AWS |
 
 > O `docker-compose.yml` já injeta `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` e `DB_NAME` automaticamente — não é necessário defini-los no `.env` ao usar Docker Compose.
 
@@ -133,17 +145,25 @@ As migrations rodam automaticamente na inicialização em produção (`NODE_ENV=
 
 ## Rodando sem autenticação
 
-Para desenvolvimento local sem AWS Cognito, comente o guard global em `src/app.module.ts`:
+Por padrão (quando `AUTH_ENABLED` não está definido ou não é `"true"`), a API sobe sem validação de JWT e todos os endpoints ficam públicos — nenhuma alteração de código necessária.
 
-```typescript
-providers: [
-  { provide: APP_FILTER, useClass: ErrorHandlerFilter },
-  // { provide: APP_GUARD, useClass: CognitoAuthGuard },  // ← comentar esta linha
-  { provide: APP_GUARD, useClass: CustomThrottlerGuard },
-],
+```env
+# .env — desenvolvimento local sem Cognito
+AUTH_ENABLED=          # vazio = auth desativado
 ```
 
-Todos os endpoints passam a ser públicos sem nenhuma outra alteração.
+Para produção, basta ativar e preencher as variáveis do Cognito:
+
+```env
+# .env — produção
+AUTH_ENABLED=true
+AWS_REGION=us-east-1
+COGNITO_USER_POOL_ID=us-east-1_xxxxxxx
+COGNITO_CLIENT_ID=xxxxxxxxxx
+COGNITO_CLIENT_SECRET=xxxxxxxxxx
+AWS_ACCESS_KEY_ID_COGNITO=AKIA...
+AWS_SECRET_ACCESS_KEY_COGNITO=...
+```
 
 ---
 
