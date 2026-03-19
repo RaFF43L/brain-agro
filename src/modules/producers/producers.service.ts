@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Producer } from './entities/producer.entity';
 import { Farm } from '../farms/entities/farm.entity';
 import { Crop } from '../crops/entities/crop.entity';
@@ -18,6 +19,8 @@ export class ProducersService {
   private readonly sortableFields = ['id', 'name', 'cpfCnpj', 'createdAt'];
 
   constructor(
+    @InjectPinoLogger(ProducersService.name)
+    private readonly logger: PinoLogger,
     @InjectRepository(Producer)
     private readonly producerRepository: Repository<Producer>,
   ) {}

@@ -39,6 +39,16 @@ export function HandleErrorsClass(options: HandleErrorsOptions = {}) {
           try {
             return await originalMethod.apply(this, args);
           } catch (error: any) {
+            if (options.onError) {
+              options.onError(error, propertyName, args);
+            }
+
+            // Quando rethrow=true o erro sobe até o ErrorHandlerFilter,
+            // que é responsável por logar com o contexto completo da request
+            if (rethrow) {
+              throw error;
+            }
+
             const errorMessage = options.message
               ? `${options.message}: ${error.message}`
               : `Error in ${className}.${propertyName}: ${error.message}`;
@@ -47,14 +57,6 @@ export function HandleErrorsClass(options: HandleErrorsOptions = {}) {
               logger[logLevel](errorMessage, error.stack);
             } else {
               logger[logLevel](errorMessage);
-            }
-
-            if (options.onError) {
-              options.onError(error, propertyName, args);
-            }
-
-            if (rethrow) {
-              throw error;
             }
 
             throw new CustomError(

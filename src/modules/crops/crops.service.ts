@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Crop } from './entities/crop.entity';
 import { FarmsService } from '../farms/farms.service';
 import { HandleErrorsClass } from '../../common/decorators/handle-errors-class.decorator';
@@ -16,6 +17,8 @@ export class CropsService {
   private readonly sortableFields = ['id', 'season', 'culture', 'createdAt'];
 
   constructor(
+    @InjectPinoLogger(CropsService.name)
+    private readonly logger: PinoLogger,
     @InjectRepository(Crop)
     private readonly cropRepository: Repository<Crop>,
     private readonly farmsService: FarmsService,

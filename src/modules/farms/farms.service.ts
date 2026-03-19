@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Farm } from './entities/farm.entity';
 import { ProducersService } from '../producers/producers.service';
 import { HandleErrorsClass } from '../../common/decorators/handle-errors-class.decorator';
@@ -25,6 +26,8 @@ export class FarmsService {
   ];
 
   constructor(
+    @InjectPinoLogger(FarmsService.name)
+    private readonly logger: PinoLogger,
     @InjectRepository(Farm)
     private readonly farmRepository: Repository<Farm>,
     private readonly producersService: ProducersService,
