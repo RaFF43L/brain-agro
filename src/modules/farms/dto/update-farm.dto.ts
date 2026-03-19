@@ -34,4 +34,10 @@ export class UpdateFarmDto {
   @Min(0)
   @IsOptional()
   vegetationArea?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID do produtor associado' })
+  @IsNumber()
+  @IsPositive()
+  @IsOptional()
+  producerId?: number;
 }

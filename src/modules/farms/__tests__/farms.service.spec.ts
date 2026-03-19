@@ -205,6 +205,49 @@ describe('FarmsService', () => {
     });
   });
 
+    describe('findUnassigned', () => {
+    it('should return paginated farms with offset', async () => {
+      const farms = [{ id: 1, name: 'Fazenda Boa Vista' }] as unknown as Farm[];
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([farms, 1]);
+      farmRepository.createQueryBuilder!.mockReturnValue(mockQb);
+
+      const result = await service.findUnassigned({ page: 1, limit: 10 });
+
+      expect(mockQb.where).toHaveBeenCalledWith('farm.producerId = :producerId', { producerId: 1 });
+      expect(mockQb.skip).toHaveBeenCalledWith(0);
+      expect(result.data).toEqual(farms);
+      expect(result.meta.total).toBe(1);
+    });
+
+    it('should return farms with cursor pagination', async () => {
+      const farms = [{ id: 6, name: 'Fazenda Nova' }] as unknown as Farm[];
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([farms, 20]);
+      farmRepository.createQueryBuilder!.mockReturnValue(mockQb);
+
+      const result = await service.findByProducer(1, { cursor: 5, limit: 1 });
+
+      expect(mockQb.andWhere).toHaveBeenCalledWith('farm.id > :cursor', { cursor: 5 });
+      expect(result.meta.nextCursor).toBe(6);
+      expect(result.meta.hasNext).toBe(true);
+    });
+
+    it('should filter farms by search', async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+      farmRepository.createQueryBuilder!.mockReturnValue(mockQb);
+
+      await service.findByProducer(1, { page: 1, limit: 10, search: 'Boa' });
+
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        '(farm.name ILIKE :search OR farm.city ILIKE :search)',
+        { search: '%Boa%' },
+      );
+    });
+  });
+
+
   describe('findOne', () => {
     it('should return a farm by id', async () => {
       const expected = { id: 1, name: 'Fazenda Boa Vista' } as unknown as Farm;

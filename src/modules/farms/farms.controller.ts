@@ -23,6 +23,9 @@ import {
   UpdateFarmDocs,
   DeleteFarmDocs,
 } from './decorators';
+import { FindUnassignedFarmDocs } from './decorators/find-unassigned-farm.decorator';
+import { DashboardFarmDocs } from './decorators/dashboard-farm.decorator';
+import { FilterDateDto } from './dto/filter-farm.dto';
 
 @ApiTags('Farms')
 @Controller()
@@ -42,6 +45,18 @@ export class FarmsController {
     @Query() query: CursorPaginationQueryDto,
   ) {
     return this.farmsService.findByProducer(producerId, query);
+  }
+
+  @Get('farms/unassigned')
+  @FindUnassignedFarmDocs()
+  findUnassigned(@Query() query: CursorPaginationQueryDto) {
+    return this.farmsService.findUnassigned(query);
+  }
+
+  @Get('farms/dashboard')
+  @DashboardFarmDocs()
+  getDashboard(@Query() query: FilterDateDto) {
+    return this.farmsService.getDashboard(query);
   }
 
   @Get('farms/:id')
