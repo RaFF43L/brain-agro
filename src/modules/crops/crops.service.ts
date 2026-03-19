@@ -1,27 +1,21 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Crop } from './entities/crop.entity';
-import { FarmsService } from '../farms/farms.service';
 import { HandleErrorsClass } from '../../common/decorators/handle-errors-class.decorator';
 import { CustomError } from '../../common/errors/custom-error';
 import {
   CursorPaginationQueryDto,
   PaginatedResult,
 } from '../../common/dto/pagination-query.dto';
+import { CropRepository } from './repositories/crop.repository';
 
 @Injectable()
 @HandleErrorsClass({ rethrow: true })
 export class CropsService {
-  private readonly sortableFields = ['id', 'season', 'culture', 'createdAt'];
-
   constructor(
     @InjectPinoLogger(CropsService.name)
     private readonly logger: PinoLogger,
-    @InjectRepository(Crop)
-    private readonly cropRepository: Repository<Crop>,
-    private readonly farmsService: FarmsService,
+    private readonly cropRepository: CropRepository,
   ) {}
 
   async create(dto: { season: string; culture: string }): Promise<Crop> {
@@ -33,105 +27,13 @@ export class CropsService {
     farmId: number,
     query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<Crop>> {
-    const {
-      page = 1,
-      limit = 10,
-      cursor,
-      search,
-      sortBy,
-      sortOrder = 'ASC',
-    } = query;
-
-    const field = this.sortableFields.includes(sortBy ?? '') ? sortBy! : 'id';
-
-    const qb = this.cropRepository
-      .createQueryBuilder('crop')
-      .where('crop.farmId = :farmId', { farmId })
-      .orderBy(`crop.${field}`, sortOrder);
-
-    if (search) {
-      qb.andWhere('(crop.season ILIKE :search OR crop.culture ILIKE :search)', {
-        search: `%${search}%`,
-      });
-    }
-
-    if (cursor) {
-      qb.andWhere('crop.id > :cursor', { cursor });
-    }
-
-    qb.take(limit);
-
-    if (!cursor) {
-      qb.skip((page - 1) * limit);
-    }
-
-    const [data, total] = await qb.getManyAndCount();
-    const totalPages = Math.ceil(total / limit);
-    const lastItem = data[data.length - 1];
-
-    return {
-      data,
-      meta: {
-        total,
-        page: cursor ? 0 : page,
-        limit,
-        totalPages,
-        hasNext: cursor ? data.length === limit : page < totalPages,
-        nextCursor: lastItem?.id ?? null,
-      },
-    };
+    return this.cropRepository.findByFarm(farmId, query);
   }
 
   async findUnassigned(
     query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<Crop>> {
-    const {
-      page = 1,
-      limit = 10,
-      cursor,
-      search,
-      sortBy,
-      sortOrder = 'ASC',
-    } = query;
-
-    const field = this.sortableFields.includes(sortBy ?? '') ? sortBy! : 'id';
-
-    const qb = this.cropRepository
-      .createQueryBuilder('crop')
-      .where('crop.farmId IS NULL')
-      .orderBy(`crop.${field}`, sortOrder);
-
-    if (search) {
-      qb.andWhere('(crop.season ILIKE :search OR crop.culture ILIKE :search)', {
-        search: `%${search}%`,
-      });
-    }
-
-    if (cursor) {
-      qb.andWhere('crop.id > :cursor', { cursor });
-    }
-
-    qb.take(limit);
-
-    if (!cursor) {
-      qb.skip((page - 1) * limit);
-    }
-
-    const [data, total] = await qb.getManyAndCount();
-    const totalPages = Math.ceil(total / limit);
-    const lastItem = data[data.length - 1];
-
-    return {
-      data,
-      meta: {
-        total,
-        page: cursor ? 0 : page,
-        limit,
-        totalPages,
-        hasNext: cursor ? data.length === limit : page < totalPages,
-        nextCursor: lastItem?.id ?? null,
-      },
-    };
+    return this.cropRepository.findUnassigned(query);
   }
 
   async update(
@@ -149,10 +51,7 @@ export class CropsService {
   }
 
   async findOne(id: number): Promise<Crop> {
-    const crop = await this.cropRepository.findOne({
-      where: { id },
-      relations: ['farm'],
-    });
+    const crop = await this.cropRepository.findOne(id);
 
     if (!crop) {
       throw new CustomError(

@@ -3,12 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Crop } from './entities/crop.entity';
 import { CropsService } from './crops.service';
 import { CropsController } from './crops.controller';
-import { FarmsModule } from '../farms/farms.module';
+import { CropRepository } from './repositories/crop.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Crop]), FarmsModule],
+  imports: [TypeOrmModule.forFeature([Crop])],
   controllers: [CropsController],
-  providers: [CropsService],
+  providers: [CropsService, CropRepository],
   exports: [CropsService],
 })
 export class CropsModule {}
