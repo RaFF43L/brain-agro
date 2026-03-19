@@ -6,5 +6,8 @@
   "transform": {
     "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "tsconfig.json" }]
   },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(jose)/)"
+  ],
   "testTimeout": 30000
 }
