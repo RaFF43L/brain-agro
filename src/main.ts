@@ -18,7 +18,7 @@ async function bootstrap() {
 
   if (swaggerPassword) {
     app.use(
-      '/docs',
+      ['/api/docs', '/api/reference'],
       basicAuth({
         users: { admin: swaggerPassword },
         challenge: true,
