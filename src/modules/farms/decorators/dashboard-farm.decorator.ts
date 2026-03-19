@@ -1,8 +1,9 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 
 export function DashboardFarmDocs() {
   return applyDecorators(
+    ApiBearerAuth(),
     ApiOperation({ summary: 'Obter dados para dashboard de fazendas' }),
     ApiOkResponse({
       description: 'Dados do dashboard de fazendas',

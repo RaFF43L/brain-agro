@@ -1,10 +1,20 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+} from '@nestjs/swagger';
 
 export function FindAllFarmsDocs() {
   return applyDecorators(
+    ApiBearerAuth(),
     ApiOperation({ summary: 'Listar fazendas de um produtor' }),
-    ApiParam({ name: 'producerId', type: Number, description: 'ID do produtor' }),
+    ApiParam({
+      name: 'producerId',
+      type: Number,
+      description: 'ID do produtor',
+    }),
     ApiOkResponse({ description: 'Lista de fazendas retornada com sucesso' }),
   );
 }
