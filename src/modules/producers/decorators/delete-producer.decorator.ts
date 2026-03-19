@@ -1,5 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOperation,
@@ -8,6 +9,7 @@ import {
 
 export function DeleteProducerDocs() {
   return applyDecorators(
+    ApiBearerAuth(),
     ApiOperation({ summary: 'Remover um produtor' }),
     ApiParam({ name: 'id', type: Number, description: 'ID do produtor' }),
     ApiNoContentResponse({ description: 'Produtor removido com sucesso' }),
