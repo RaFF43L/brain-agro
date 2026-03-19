@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, truncateTables } from './helpers/setup';
+import { createTestApp, truncateTables } from '../../../common/test/setup';
 
-describe('Producers (e2e)', () => {
+describe('Producers (integration)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -98,9 +98,7 @@ describe('Producers (e2e)', () => {
         .post('/producers')
         .send({ cpfCnpj: '52998224725', name: 'João Silva' });
 
-      const res = await request(app.getHttpServer())
-        .get('/producers')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/producers').expect(200);
 
       expect(res.body.data).toBeInstanceOf(Array);
       expect(res.body.meta).toMatchObject({

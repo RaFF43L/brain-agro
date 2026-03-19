@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, truncateTables } from './helpers/setup';
+import { createTestApp, truncateTables } from '../../../common/test/setup';
 
-describe('Crops (e2e)', () => {
+describe('Crops (integration)', () => {
   let app: INestApplication;
   let farmId: number;
 
@@ -136,28 +136,20 @@ describe('Crops (e2e)', () => {
   // ---------------------------------------------------------------------------
 
   describe('GET /crops/unassigned', () => {
-    it('returns crops with no farm', async () => {
-      // Create an assigned crop
+    it('returns empty list when all crops have a farm', async () => {
       await request(app.getHttpServer())
         .post('/crops')
         .send({ season: 'Safra 2024', culture: 'Soja', farmId });
 
-      // There are no unassigned crops (CreateCropDto requires farmId)
-      // Unassigned crops can only result from the cascade-null behavior.
-      // Verify the endpoint is working and returns the correct structure.
       const res = await request(app.getHttpServer())
         .get('/crops/unassigned')
         .expect(200);
 
       expect(res.body.data).toBeInstanceOf(Array);
-      expect(res.body.meta).toMatchObject({
-        total: 0,
-        limit: 10,
-      });
+      expect(res.body.meta).toMatchObject({ total: 0, limit: 10 });
     });
 
-    it('returns unassigned crop after its farm is deleted', async () => {
-      // Create a second farm to delete, leaving its crop orphaned
+    it('cascade deletes crop (not orphans) when its farm is deleted', async () => {
       const producer = await request(app.getHttpServer())
         .post('/producers')
         .send({ cpfCnpj: '11444777035', name: 'P2' });
@@ -178,13 +170,11 @@ describe('Crops (e2e)', () => {
         .post('/crops')
         .send({ season: 'Safra 2022', culture: 'Café', farmId: farm2.body.id });
 
-      // Delete farm with onDelete:'CASCADE' removes the crop too, so
-      // the unassigned list stays empty after cascade delete.
-      // This test validates that behavior: crop is gone, not orphaned.
       await request(app.getHttpServer())
         .delete(`/farms/${farm2.body.id}`)
         .expect(204);
 
+      // onDelete: CASCADE removes crop along with the farm
       await request(app.getHttpServer())
         .get(`/crops/${crop.body.id}`)
         .expect(404);

@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, truncateTables } from './helpers/setup';
+import { createTestApp, truncateTables } from '../../../common/test/setup';
 
-describe('Farms (e2e)', () => {
+describe('Farms (integration)', () => {
   let app: INestApplication;
   let producerId: number;
 
@@ -125,40 +125,15 @@ describe('Farms (e2e)', () => {
   // ---------------------------------------------------------------------------
 
   describe('GET /farms/unassigned', () => {
-    it('returns farms with no producer', async () => {
-      // Assigned farm
+    it('returns empty list when all farms have a producer', async () => {
       await request(app.getHttpServer()).post('/farms').send(farmPayload());
 
-      // Unassigned: create producer/full without farms to get a producer,
-      // then create farm without producerId — but CreateFarmDto requires producerId.
-      // Use PATCH to detach: create + update producerId to null is not exposed.
-      // Instead test via producer/full without farms + create a second producer and
-      // verify count. Actually the simplest path: create farm assigned, then we need
-      // a farm that has no producer. Since CreateFarmDto requires producerId, we use
-      // producers/full to create one with a farm and then delete the producer (cascade
-      // sets farm.producerId = null via the nullable column).
-      const p2 = await request(app.getHttpServer())
-        .post('/producers')
-        .send({ cpfCnpj: '11444777035', name: 'P2' });
-
-      const unassignedFarm = await request(app.getHttpServer())
-        .post('/farms')
-        .send({ ...farmPayload(), producerId: p2.body.id, name: 'Sem produtor' });
-
-      // Delete the producer — farm.producerId stays as orphan (no cascade null here,
-      // cascade deletes the farm). So we need a different approach: PATCH to null.
-      // The update DTO allows producerId. Set it to null is not typed — let's just
-      // verify the unassigned endpoint with the data we have.
-      // Simplest valid test: no farms with null producerId yet.
       const res = await request(app.getHttpServer())
         .get('/farms/unassigned')
         .expect(200);
 
-      // All farms created so far have a producerId — count should be 0
       expect(res.body.data).toHaveLength(0);
       expect(res.body.meta.total).toBe(0);
-
-      void unassignedFarm; // suppress unused warning
     });
   });
 
@@ -179,10 +154,7 @@ describe('Farms (e2e)', () => {
         totalHectares: 1000,
         byState: expect.any(Array),
         byCulture: expect.any(Array),
-        landUse: {
-          arableArea: 600,
-          vegetationArea: 400,
-        },
+        landUse: { arableArea: 600, vegetationArea: 400 },
       });
     });
 

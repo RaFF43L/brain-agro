@@ -331,12 +331,11 @@ Configure `TEST_DB_NAME` no `.env` se quiser usar um nome diferente de `brain_ag
 
 O que é coberto:
 
-| Suite | Cenários |
+| Arquivo | Cenários |
 |---|---|
-| `app.e2e-spec` | Health check |
-| `producers.e2e-spec` | CRUD completo, `POST /full` com farms+crops, paginação, busca, cascade delete |
-| `farms.e2e-spec` | CRUD completo, validação de área, paginação por cursor, dashboard com filtro de data, cascade delete de crops |
-| `crops.e2e-spec` | CRUD completo, paginação por cursor, busca, cascade delete |
+| `src/modules/producers/__tests__/producers.integration.spec.ts` | CRUD completo, `POST /full` com farms+crops, paginação, busca, cascade delete |
+| `src/modules/farms/__tests__/farms.integration.spec.ts` | CRUD completo, validação de área, paginação por cursor, dashboard com filtro de data, cascade delete de crops |
+| `src/modules/crops/__tests__/crops.integration.spec.ts` | CRUD completo, paginação por cursor, busca, cascade delete |
 
 ---
 

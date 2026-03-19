@@ -2,7 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { AppModule } from '../../src/app.module';
+import { AppModule } from '../../app.module';
 
 export async function createTestApp(): Promise<INestApplication> {
   process.env.AUTH_ENABLED = '';
