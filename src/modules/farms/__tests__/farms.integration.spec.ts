@@ -93,7 +93,7 @@ describe('Farms (integration)', () => {
     it('returns empty list for producer with no farms', async () => {
       const other = await request(app.getHttpServer())
         .post('/producers')
-        .send({ cpfCnpj: '11444777035', name: 'Outro' });
+        .send({ cpfCnpj: '11144477735', name: 'Outro' });
 
       const res = await request(app.getHttpServer())
         .get(`/producers/${other.body.id}/farms`)

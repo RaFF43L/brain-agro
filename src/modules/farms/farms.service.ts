@@ -26,6 +26,7 @@ export class FarmsService {
     totalArea: number;
     arableArea: number;
     vegetationArea: number;
+    producerId?: number;
   }): Promise<Farm> {
     if (dto.arableArea + dto.vegetationArea > dto.totalArea) {
       throw new CustomError(
@@ -34,8 +35,15 @@ export class FarmsService {
       );
     }
 
-    const farm = Object.assign(new Farm(), dto);
-    return this.farmRepository.save(farm);
+    try {
+      const farm = Object.assign(new Farm(), dto);
+      return await this.farmRepository.save(farm);
+    } catch (error: any) {
+      if (error?.code === '23503') {
+        throw new CustomError('Producer not found', HttpStatus.NOT_FOUND);
+      }
+      throw error;
+    }
   }
 
   async findByProducer(
@@ -68,9 +76,9 @@ export class FarmsService {
   ): Promise<Farm> {
     const farm = await this.findOne(id);
 
-    const totalArea = dto.totalArea ?? farm.totalArea;
-    const arableArea = dto.arableArea ?? farm.arableArea;
-    const vegetationArea = dto.vegetationArea ?? farm.vegetationArea;
+    const totalArea = Number(dto.totalArea ?? farm.totalArea);
+    const arableArea = Number(dto.arableArea ?? farm.arableArea);
+    const vegetationArea = Number(dto.vegetationArea ?? farm.vegetationArea);
 
     if (arableArea + vegetationArea > totalArea) {
       throw new CustomError(
